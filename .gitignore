@@ -1,2 +1,3 @@
 .pi/extensions/searxng-tools/node_modules/
 node_modules/
+.pi/fetch-raw/

@@ -14,8 +14,8 @@
 ### Варианты реализации
 | | A: Копия mcp-searxng | B: Native для pi (выбрано) |
 |---|---|---|
-| Зависимости | `undici`, `node-html-markdown`, proxy-модули, security-хелперы | Только стандартные `http`/`https` Node.js + `node-html-markdown` |
-| Объём кода | ~500 строк сложной логики | ~100 строк прямой HTTP-логики |
+| Зависимости | `undici`, `node-html-markdown`, proxy-модули, security-хелперы | Только `undici` + `node-html-markdown` |
+| Объём кода | ~500 строк сложной логики | ~130 строк прямой HTTP-логики |
 | Поддержка | Сложнее отлаживать, глубокая вложенность | Просто добавить параметры в запрос |
 
 **Решение:** Вариант B — native для pi. Проще поддерживать и расширять по требованию.
@@ -26,8 +26,12 @@
 ├── package.json      # Зависимости + точка входа (pi.extensions)
 ├── index.ts          # Код расширения (экспортирует default function)
 └── node_modules/     # Локальные зависимости
-    └── node-html-markdown/
+    ├── node-html-markdown/
+    └── undici/
 ```
+
+### Автоматически создаваемые папки
+- **`.pi/fetch-raw/`** — создаётся при первом вызове `searxng_fetch_raw`, содержит сырые HTML-файлы
 
 ### Конфигурация
 - **SearXNG URL:** `http://ub2026-mini:9098` (переопределяется через env `SEARXNG_URL`)
@@ -71,7 +75,8 @@
 
 | Пакет | Назначение |
 |-------|-----------|
-| `node:http`, `node:url` | HTTP-запросы к SearXNG API и внешним URL |
+| `undici` | HTTP-запросы к SearXNG API и внешним URL (HTTPS, редиректы) |
+| `node:url` | Парсинг URL для построения запросов к SearXNG |
 | `typebox` | Схемы параметров инструментов (встроено в pi) |
 | `@earendil-works/pi-ai` | StringEnum для enum-параметров (встроено в pi) |
 | `node-html-markdown` | Конвертация HTML → Markdown |
