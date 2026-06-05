@@ -8,14 +8,13 @@ import { Defuddle } from "defuddle/node";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import dotenv from "dotenv";
 
-// ===== Dynamic .env reader (graceful fallback if dotenv not installed) =====
-function readEnvFile(): NodeJS.ProcessEnv {
-  try {
-    const d = require("dotenv");
-    return d.config({ path: path.join(__dirname, ".env") }).parsed || {};
-  } catch (e) { /* dotenv not available */ }
-  return {};
+// ===== .env reader — reads file on every call (dynamic config changes) =====
+function readEnvFile(): Record<string, string | undefined> {
+  const result = dotenv.config({ path: path.join(__dirname, ".env") });
+  if (!result.parsed) throw new Error("dotenv.config() returned no parsed data — check .env file at " + path.join(__dirname, ".env"));
+  return result.parsed;
 }
 
 // ===== Type Definitions =====
