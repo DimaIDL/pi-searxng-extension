@@ -131,8 +131,9 @@ function saveRawHtmlAndMarkdown(url: string, html: string, markdown: string): Ra
 /**
  * Сохраняет результаты поиска SearXNG в структурированный JSON файл.
  * Используется только если isSaveRawData() = true.
+ * Возвращает путь к файлу или undefined.
  */
-function saveSearchResults(query: string, data: SearxngSearchData): void {
+function saveSearchResults(query: string, data: SearxngSearchData): string | undefined {
   if (!isSaveRawData()) return;
   ensureRawFetchDir();
   const now = new Date();
@@ -142,6 +143,7 @@ function saveSearchResults(query: string, data: SearxngSearchData): void {
   const filename = `search_${safeQuery}_${hash}_${dateStr}.json`;
   const filepath = path.join(RAW_FETCH_DIR, filename);
   fs.writeFileSync(filepath, JSON.stringify({ query, data }, null, 2), "utf-8");
+  return filepath;
 }
 
 /**
@@ -279,16 +281,18 @@ export default function(pi: ExtensionAPI) {
  * Возвращает:
  *   content      — отформатированный список результатов (нумерация, заголовок,
  *                  URL, сниппет, score релевантности)
- *   details      — resultsCount: количество найденных результатов
+ *   details      — resultsCount: количество найденных результатов, savedPaths: { jsonPath }
  *
  * Особенности:
  *   Если SAVE_RAW_DATA = true, результаты сохраняются в .pi/fetch-raw/
- *   как JSON файл с именем <запрос>_<дата>.json.
+ *   как JSON файл с именем search_<запрос>_<хэш>_<дата>.json.
  */
   pi.registerTool({
     name: "searxng_search",
     label: "SearXNG Search",
-    description: "Search the web using SearXNG metasearch engine.",
+    description: isSaveRawData()
+      ? "Search the web using SearXNG metasearch engine, AND save results to .pi/fetch-raw/. Do NOT read saved files without special permission."
+      : "Search the web using SearXNG metasearch engine.",
     parameters: Type.Object({
       query: Type.String({ description: "The search query" }),
       language: Type.Optional(Type.String({ description: "Language code (e.g., en, ru). Default: all." })),
@@ -307,8 +311,11 @@ export default function(pi: ExtensionAPI) {
       try {
         const data = await httpGet(url.toString());
         // Сохраняем результаты поиска если включено
-        saveSearchResults(params.query, data);
-        return { content: [{ type: "text", text: formatResults(data) }], details: { resultsCount: data.results?.length || 0 }};
+        const jsonPath = saveSearchResults(params.query, data);
+        return {
+          content: [{ type: "text", text: formatResults(data) }],
+          details: { resultsCount: data.results?.length || 0, savedPaths: jsonPath ? { jsonPath } : undefined },
+        };
       } catch (error) {
         throw new Error("SearXNG search failed: " + (error instanceof Error ? error.message : String(error)));
       }
