@@ -1,7 +1,8 @@
 {
   "name": "searxng-tools",
   "dependencies": {
-    "node-html-markdown": "^1.3.0",
+    "defuddle": "^0.18.0",
+    "linkedom": "^0.14.0",
     "undici": "^6.26.0"
   },
   "pi": {

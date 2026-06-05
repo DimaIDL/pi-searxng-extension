@@ -3,7 +3,8 @@ import { Type } from "typebox";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { fetch as undiciFetch, request as undiciRequest } from "undici";
 import { URL } from "node:url";
-import { NodeHtmlMarkdown } from "node-html-markdown";
+import { parseHTML } from "linkedom";
+import { Defuddle } from "defuddle/node";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -62,8 +63,78 @@ function formatResults(data) {
   return formatted.join("\n\n");
 }
 
-function htmlToMarkdown(html) {
-  try { return NodeHtmlMarkdown.translate(html).replace(/\s+/g, " ").replace(/([ \t]*)\n/g, "\n").trim(); } catch(e) { throw new Error("HTML to Markdown failed: " + e); }
+/**
+ * Extract article content from HTML using Defuddle (DOM analysis + CSS selectors).
+ * Returns cleaned Markdown with metadata.
+ */
+async function extractArticle(html, url) {
+  try {
+    const { document } = parseHTML(html);
+    const result = await Defuddle(document, url, { markdown: true });
+    return {
+      content: result.content || "",
+      title: result.title || "",
+      author: result.author || "",
+      description: result.description || "",
+      published: result.published || "",
+      image: result.image || "",
+      wordCount: result.wordCount || 0,
+    };
+  } catch (e) {
+    throw new Error("Defuddle extraction failed: " + e);
+  }
+}
+
+/**
+ * Fallback: extract article content from JSON-LD metadata.
+ * Used when Defuddle cannot find main content.
+ */
+function extractJsonLd(html) {
+  try {
+    const matches = html.matchAll(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/g);
+    for (const match of matches) {
+      try {
+        const data = JSON.parse(match[1]);
+        // Check if it's a NewsArticle or Article
+        const isArticle = Array.isArray(data["@type"])
+          ? data["@type"].includes("NewsArticle") || data["@type"].includes("Article")
+          : data["@type"] === "NewsArticle" || data["@type"] === "Article";
+        if (isArticle) {
+          return {
+            content: data.description || data.abstract || "",
+            title: data.name || data.headline || "",
+            author: typeof data.author === "string" ? data.author : JSON.stringify(data.author),
+            published: data.datePublished || "",
+            image: data.image || "",
+          };
+        }
+      } catch (e) { /* skip invalid JSON */ }
+    }
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+/**
+ * Multi-level content extraction:
+ * Level 1: Defuddle (DOM analysis + CSS selectors)
+ * Level 2: JSON-LD fallback
+ */
+async function extractArticleMultiLevel(html, url) {
+  // Level 1: Try Defuddle first
+  try {
+    const result = await extractArticle(html, url);
+    if (result.content && result.content.length > 50) {
+      return { ...result, method: "defuddle" };
+    }
+  } catch (e) { /* fall through to fallback */ }
+
+  // Level 2: Try JSON-LD fallback
+  const jsonLd = extractJsonLd(html);
+  if (jsonLd && jsonLd.content) {
+    return { ...jsonLd, method: "json-ld" };
+  }
+
+  throw new Error("Content extraction failed at all levels");
 }
 
 async function httpGetText(url) {
@@ -110,7 +181,8 @@ export default function(pi) {
   pi.registerTool({
     name: "searxng_fetch",
     label: "SearXNG Fetch",
-    description: "Fetch and read web page content. Converts HTML to Markdown.",
+    description:
+      "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
       max_length: Type.Optional(Type.Number({ description: "Max characters (default: 10000)" })),
@@ -120,10 +192,14 @@ export default function(pi) {
       onUpdate?.({ content: [{ type: "text", text: "Fetching " + params.url + "..." }] });
       try {
         const html = await httpGetText(params.url);
-        let markdown = htmlToMarkdown(html);
+        const article = await extractArticleMultiLevel(html, params.url);
+        let markdown = article.content;
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
-        return { content: [{ type: "text", text: markdown }], details: { url: params.url, length: markdown.length }};
+        return {
+          content: [{ type: "text", text: markdown }],
+          details: { url: params.url, length: markdown.length, method: article.method, title: article.title },
+        };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
       }
@@ -135,7 +211,7 @@ export default function(pi) {
     name: "searxng_fetch_raw",
     label: "SearXNG Fetch Raw",
     description:
-      "Fetch, convert to Markdown, AND save raw HTML. Same as searxng_fetch but saves the original HTML to .pi/fetch-raw/. Do NOT read saved files without special permission.",
+      "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML. Same as searxng_fetch but saves the original HTML to .pi/fetch-raw/. Do NOT read saved files without special permission.",
 
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
@@ -148,7 +224,8 @@ export default function(pi) {
 
       try {
         const html = await httpGetText(params.url);
-        let markdown = htmlToMarkdown(html);
+        const article = await extractArticleMultiLevel(html, params.url);
+        let markdown = article.content;
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
 
@@ -157,7 +234,7 @@ export default function(pi) {
 
         return {
           content: [{ type: "text", text: markdown }],
-          details: { url: params.url, length: markdown.length, savedPath: filepath },
+          details: { url: params.url, length: markdown.length, method: article.method, title: article.title, savedPath: filepath },
         };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
