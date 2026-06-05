@@ -9,9 +9,14 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
-// Load .env file (graceful fallback if dotenv not installed)
-let dotenvConfig = null;
-try { const d = require("dotenv"); dotenvConfig = d.config({ path: path.join(__dirname, ".env") }); } catch (e) { /* dotenv not available */ }
+// ===== Dynamic .env reader (graceful fallback if dotenv not installed) =====
+function readEnvFile(): NodeJS.ProcessEnv {
+  try {
+    const d = require("dotenv");
+    return d.config({ path: path.join(__dirname, ".env") }).parsed || {};
+  } catch (e) { /* dotenv not available */ }
+  return {};
+}
 
 // ===== Type Definitions =====
 
@@ -50,19 +55,24 @@ interface RawFilePaths {
 }
 
 // Priority: 1. OS env (set/$env) → 2. .env file → 3. Default placeholder
-const SEARXNG_URL = process.env.SEARXNG_URL || dotenvConfig?.parsed?.SEARXNG_URL || "<SEARXNG_URL>";
+function getSearexngUrl(): string {
+  return process.env.SEARXNG_URL || readEnvFile().SEARXNG_URL || "<SEARXNG_URL>";
+}
 
-// ===== Configuration =====
+// ===== Configuration =============
 
 /**
  * Приоритет: 1. OS env (set/$env) → 2. .env file → 3. Default.
  * По умолчанию true — сырые данные (.html и .md) сохраняются в .pi/fetch-raw/.
+ * Динамически читает .env при каждом вызове для реагирования на изменения настроек.
  */
-const SAVE_RAW_DATA = process.env.SAVE_RAW_DATA !== undefined
-  ? process.env.SAVE_RAW_DATA === "true"
-  : dotenvConfig?.parsed?.SAVE_RAW_DATA !== undefined
-    ? dotenvConfig.parsed.SAVE_RAW_DATA === "true"
-    : true;
+function isSaveRawData(): boolean {
+  return process.env.SAVE_RAW_DATA !== undefined
+    ? process.env.SAVE_RAW_DATA === "true"
+    : readEnvFile().SAVE_RAW_DATA !== undefined
+      ? readEnvFile().SAVE_RAW_DATA === "true"
+      : true;
+}
 
 // Raw fetch storage directory
 const RAW_FETCH_DIR = path.join(".pi", "fetch-raw");
@@ -111,10 +121,10 @@ function saveRawHtmlAndMarkdown(url: string, html: string, markdown: string): Ra
 
 /**
  * Сохраняет результаты поиска SearXNG в структурированный JSON файл.
- * Используется только если SAVE_RAW_DATA = true.
+ * Используется только если isSaveRawData() = true.
  */
 function saveSearchResults(query: string, data: SearxngSearchData): void {
-  if (!SAVE_RAW_DATA) return;
+  if (!isSaveRawData()) return;
   ensureRawFetchDir();
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
@@ -278,7 +288,7 @@ export default function(pi: ExtensionAPI) {
     }),
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
-      const url = new URL(SEARXNG_URL + "/search");
+      const url = new URL(getSearexngUrl() + "/search");
       url.searchParams.set("q", params.query);
       url.searchParams.set("format", "json");
       if (params.language) url.searchParams.set("language", params.language);
@@ -381,7 +391,7 @@ export default function(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
     label: "Web Fetch",
-    description: SAVE_RAW_DATA
+    description: isSaveRawData()
       ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
       : "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
 
@@ -401,9 +411,9 @@ export default function(pi: ExtensionAPI) {
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
 
-        // Save raw HTML and Markdown only if SAVE_RAW_DATA is true
+        // Save raw HTML and Markdown only if isSaveRawData() is true
         let savedPaths: RawFilePaths | undefined;
-        if (SAVE_RAW_DATA) {
+        if (isSaveRawData()) {
           savedPaths = saveRawHtmlAndMarkdown(params.url, html, markdown);
         }
 
@@ -413,7 +423,7 @@ export default function(pi: ExtensionAPI) {
           method: article.method,
           title: article.title,
         };
-        if (SAVE_RAW_DATA) {
+        if (isSaveRawData()) {
           details.savedPaths = savedPaths!;
         }
 
@@ -424,5 +434,5 @@ export default function(pi: ExtensionAPI) {
     },
   });
 
-  pi.on("session_start", async () => { console.log("[searxng-tools] Loaded, SEARXNG_URL=" + SEARXNG_URL); });
+  pi.on("session_start", async () => { console.log("[searxng-tools] Loaded, SEARXNG_URL=" + getSearexngUrl()); });
 }
