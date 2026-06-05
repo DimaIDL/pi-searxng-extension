@@ -9,6 +9,10 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
+// Load .env file (graceful fallback if dotenv not installed)
+let dotenvConfig = null;
+try { const d = require("dotenv"); dotenvConfig = d.config({ path: path.join(__dirname, ".env") }); } catch (e) { /* dotenv not available */ }
+
 // ===== Type Definitions =====
 
 interface ArticleResult {
@@ -45,7 +49,8 @@ interface RawFilePaths {
   mdPath: string;
 }
 
-const SEARXNG_URL = process.env.SEARXNG_URL || "http://ub2026-mini:9098";
+// Priority: 1. OS env (set/$env) → 2. .env file → 3. Default placeholder
+const SEARXNG_URL = process.env.SEARXNG_URL || dotenvConfig?.parsed?.SEARXNG_URL || "<SEARXNG_URL>";
 
 // Raw fetch storage directory
 const RAW_FETCH_DIR = path.join(".pi", "fetch-raw");

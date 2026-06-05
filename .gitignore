@@ -1,3 +1,6 @@
+.env
+.env.local
+.env.*.local
 .pi/extensions/searxng-tools/node_modules/
 node_modules/
 .pi/fetch-raw/
