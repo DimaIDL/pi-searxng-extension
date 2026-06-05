@@ -135,22 +135,29 @@ export default function(pi) {
     name: "searxng_fetch_raw",
     label: "SearXNG Fetch Raw",
     description:
-      "Fetch and save raw HTML content. Saves to .pi/fetch-raw/ with auto-generated filename.",
+      "Fetch, convert to Markdown, AND save raw HTML. Same as searxng_fetch but saves the original HTML to .pi/fetch-raw/. Do NOT read saved files without special permission.",
 
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
+      max_length: Type.Optional(Type.Number({ description: "Max characters (default: 10000)" })),
     }),
 
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
-      onUpdate?.({ content: [{ type: "text", text: "Fetching raw HTML from " + params.url + "..." }] });
+      onUpdate?.({ content: [{ type: "text", text: "Fetching and saving raw HTML from " + params.url + "..." }] });
 
       try {
         const html = await httpGetText(params.url);
+        let markdown = htmlToMarkdown(html);
+        const maxLength = params.max_length || 10000;
+        if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
+
+        // Save raw HTML
         const filepath = saveRawHtml(params.url, html);
+
         return {
-          content: [{ type: "text", text: `Saved to ${filepath}` }],
-          details: { url: params.url, savedPath: filepath },
+          content: [{ type: "text", text: markdown }],
+          details: { url: params.url, length: markdown.length, savedPath: filepath },
         };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
