@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SearXNG Fetch Results Comparison</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #4a90e2;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status-ok { color: green; font-weight: bold; }
+        .status-fail { color: red; font-weight: bold; }
+        .status-warn { color: orange; font-weight: bold; }
+        a {
+            color: #4a90e2;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<h1>SearXNG Fetch Results Comparison (Раунды 1-3)</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 20%;">Источник</th>
+            <th style="width: 25%;">Раунд 1</th>
+            <th style="width: 25%;">Раунд 2</th>
+            <th style="width: 30%;">Раунд 3 (Текущий)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>ВЕДОМОСТИ</strong></td>
+            <td>
+                <div class="status-fail">❌ Ошибка протокола</div>
+                <a href="https://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos" target="_blank">https://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="https://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos" target="_blank">https://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ Только меню сайта</div>
+                <a href="https://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos" target="_blank">https://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ВЕДОМОСТИ (HTTP)</strong></td>
+            <td>
+                <div class="status-fail">❌ 301 Moved Permanently</div>
+                <a href="http://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos" target="_blank">http://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ 301 Moved Permanently</div>
+                <a href="http://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos" target="_blank">http://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ Только меню сайта</div>
+                <a href="http://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos" target="_blank">http://www.vedomosti.ru/society/news/2026/05/27/1200663-rossiiskie-kosmonavti-otkritii-kosmos</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ЛЕНТА.РУ (HTTPS)</strong></td>
+            <td>
+                <div class="status-fail">❌ Ошибка протокола</div>
+                <a href="https://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/" target="_blank">https://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="https://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/" target="_blank">https://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="https://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/" target="_blank">https://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ЛЕНТА.РУ (HTTP)</strong></td>
+            <td>
+                <div class="status-fail">❌ 301 Moved Permanently</div>
+                <a href="http://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/" target="_blank">http://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/" target="_blank">http://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/" target="_blank">http://lenta.ru/news/2026/05/27/rossiyskie-kosmonavty-vyshli-v-otkrytyy-kosmos/</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>novosti-kosmonavtiki</strong></td>
+            <td>
+                <div class="status-warn">⚠️ Меню сайта (редирект)</div>
+                <a href="http://novosti-kosmonavtiki.ru/news/" target="_blank">http://novosti-kosmonavtiki.ru/news/</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ "fetch failed"</div>
+                <a href="http://novosti-kosmonavtiki.ru/news/" target="_blank">http://novosti-kosmonavtiki.ru/news/</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ "fetch failed"</div>
+                <a href="http://novosti-kosmonavtiki.ru/news/" target="_blank">http://novosti-kosmonavtiki.ru/news/</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>EADaily (статья 1)</strong></td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://eadaily.com/ru/news/2026/05/27/rossiyskie-kosmonavty-vyydut-v-otkrytyy-kosmos-s-mks-vpervye-v-2026-godu" target="_blank">http://eadaily.com/ru/news/2026/05/27/rossiyskie-kosmonavty-vyydut-v-otkrytyy-kosmos-s-mks-vpervye-v-2026-godu</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://eadaily.com/ru/news/2026/05/27/rossiyskie-kosmonavty-vyydut-v-otkrytyy-kosmos-s-mks-vpervye-v-2026-godu" target="_blank">http://eadaily.com/ru/news/2026/05/27/rossiyskie-kosmonavty-vyydut-v-otkrytyy-kosmos-s-mks-vpervye-v-2026-godu</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://eadaily.com/ru/news/2026/05/27/rossiyskie-kosmonavty-vyydut-v-otkrytyy-kosmos-s-mks-vpervye-v-2026-godu" target="_blank">http://eadaily.com/ru/news/2026/05/27/rossiyskie-kosmonavty-vyydut-v-otkrytyy-kosmos-s-mks-vpervye-v-2026-godu</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>EADaily (статья 2)</strong></td>
+            <td>
+                <div class="status-fail">❌ 301 Moved Permanently</div>
+                <a href="http://www.eadaily.com/ru/news/2026/05/28/rossiyskie-kosmonavty-vernulis-na-mks-posle-raboty-v-otkrytom-kosmose" target="_blank">http://www.eadaily.com/ru/news/2026/05/28/rossiyskie-kosmonavty-vernulis-na-mks-posle-raboty-v-otkrytom-kosmose</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://www.eadaily.com/ru/news/2026/05/28/rossiyskie-kosmonavty-vernulis-na-mks-posle-raboty-v-otkrytom-kosmose" target="_blank">http://www.eadaily.com/ru/news/2026/05/28/rossiyskie-kosmonavty-vernulis-na-mks-posle-raboty-v-otkrytom-kosmose</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://www.eadaily.com/ru/news/2026/05/28/rossiyskie-kosmonavty-vernulis-na-mks-posle-raboty-v-otkrytom-kosmose" target="_blank">http://www.eadaily.com/ru/news/2026/05/28/rossiyskie-kosmonavty-vernulis-na-mks-posle-raboty-v-otkrytom-kosmose</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>PROKOSMOS</strong></td>
+            <td>
+                <div class="status-warn">⚠️ Только картинка</div>
+                <a href="http://prokosmos.ru/2026/05/28/rossiiskie-kosmonavti-zavershili-vikhod-v-otkritii-kosmos-vse-zadachi-vipolneni" target="_blank">http://prokosmos.ru/2026/05/28/rossiiskie-kosmonavti-zavershili-vikhod-v-otkritii-kosmos-vse-zadachi-vipolneni</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://prokosmos.ru/2026/05/28/rossiiskie-kosmonavti-zavershili-vikhod-v-otkritii-kosmos-vse-zadachi-vipolneni" target="_blank">http://prokosmos.ru/2026/05/28/rossiiskie-kosmonavti-zavershili-vikhod-v-otkritii-kosmos-vse-zadachi-vipolneni</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://prokosmos.ru/2026/05/28/rossiiskie-kosmonavti-zavershili-vikhod-v-otkritii-kosmos-vse-zadachi-vipolneni" target="_blank">http://prokosmos.ru/2026/05/28/rossiiskie-kosmonavti-zavershili-vikhod-v-otkritii-kosmos-vse-zadachi-vipolneni</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ИНТЕРФАКС</strong></td>
+            <td>
+                <div class="status-fail">❌ 301 Moved Permanently</div>
+                <a href="http://www.interfax.ru/russia/1092195" target="_blank">http://www.interfax.ru/russia/1092195</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://www.interfax.ru/russia/1092195" target="_blank">http://www.interfax.ru/russia/1092195</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://www.interfax.ru/russia/1092195" target="_blank">http://www.interfax.ru/russia/1092195</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>GAZETA.RU</strong></td>
+            <td>
+                <div class="status-fail">❌ 301 Moved Permanently</div>
+                <a href="http://www.gazeta.ru/science/news/2026/05/28/28562443.shtml" target="_blank">http://www.gazeta.ru/science/news/2026/05/28/28562443.shtml</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ Только картинка (301)</div>
+                <a href="http://www.gazeta.ru/science/news/2026/05/28/28562443.shtml" target="_blank">http://www.gazeta.ru/science/news/2026/05/28/28562443.shtml</a>
+            </td>
+            <td>
+                <div class="status-fail">❌ Только картинка</div>
+                <a href="http://www.gazeta.ru/science/news/2026/05/28/28562443.shtml" target="_blank">http://www.gazeta.ru/science/news/2026/05/28/28562443.shtml</a>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ЖЭНЬМИНЬ ЖИБАО</strong></td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://russian.people.com.cn/n3/2026/0528/c31517-20461389.html" target="_blank">http://russian.people.com.cn/n3/2026/0528/c31517-20461389.html</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://russian.people.com.cn/n3/2026/0528/c31517-20461389.html" target="_blank">http://russian.people.com.cn/n3/2026/0528/c31517-20461389.html</a>
+            </td>
+            <td>
+                <div class="status-ok">✅ Полный текст статьи</div>
+                <a href="http://russian.people.com.cn/n3/2026/0528/c31517-20461389.html" target="_blank">http://russian.people.com.cn/n3/2026/0528/c31517-20461389.html</a>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
