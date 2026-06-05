@@ -50,11 +50,16 @@ function saveRawFile(url, content, extension) {
 
 /**
  * Saves raw HTML and Markdown files with the same base filename.
+ * Generates the base name ONCE, then appends both extensions.
  * @returns {Object} paths to both saved files
  */
 function saveRawHtmlAndMarkdown(url, html, markdown) {
-  const htmlPath = saveRawFile(url, html, ".html");
-  const mdPath = saveRawFile(url, markdown, ".md");
+  ensureRawFetchDir();
+  const baseFilename = generateRawBaseFilename(url);
+  const htmlPath = path.join(RAW_FETCH_DIR, `${baseFilename}.html`);
+  const mdPath = path.join(RAW_FETCH_DIR, `${baseFilename}.md`);
+  fs.writeFileSync(htmlPath, html, "utf-8");
+  fs.writeFileSync(mdPath, markdown, "utf-8");
   return { htmlPath, mdPath };
 }
 
