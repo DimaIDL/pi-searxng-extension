@@ -26,7 +26,8 @@
 ├── package.json      # Зависимости + точка входа (pi.extensions)
 ├── index.ts          # Код расширения (экспортирует default function)
 └── node_modules/     # Локальные зависимости
-    ├── node-html-markdown/
+    ├── defuddle/
+    ├── linkedom/
     └── undici/
 ```
 
@@ -36,7 +37,7 @@
 ### Конфигурация
 - **SearXNG URL:** `http://ub2026-mini:9098` (переопределяется через env `SEARXNG_URL`)
 - **API поиска:** `GET /search?q=...&format=json`
-- **Конвертация HTML → Markdown:** библиотека `node-html-markdown`
+- **Конвертация HTML → Markdown:** Defuddle (DOM analysis + CSS selectors) + JSON-LD fallback
 
 ## Эпы разработки
 
@@ -52,6 +53,13 @@
 - Настроены зависимости (`node-html-markdown`, `undici`)
 - Протестирован поиск — работает корректно
 
+### Epic 3: Многоуровневое извлечение контента ✅
+- Заменён `node-html-markdown` на **Defuddle** (DOM analysis + CSS selectors)
+- Добавлен **JSON-LD fallback** как второй уровень извлечения
+- Defuddle автоматически удаляет sidebar, footer, ads по классам и атрибутам
+- JSON-LD парсит `<script type="application/ld+json">` для бэкапа
+- Возвращает metadata: title, author, description, published, image
+
 ## Текущий результат
 
 ### Работает ✅
@@ -60,7 +68,7 @@
 - Параметры: `query`, `language`, `safesearch`, `time_range`
 
 ### В процессе 🔄
-- **Чтение сайтов:** `searxng_fetch` — работает 40% (6 из 15 попыток)
+- **Чтение сайтов:** `searxng_fetch` — Defuddle + JSON-LD fallback (требует тестирования)
 - HTTPS поддержка добавлена ✅
 - Редиректы частично работают ✅
 - Оставшиеся проблемы: HTTP→HTTPS редиректы (Vedomosti, Gazeta.ru), novosti-kosmonavtiki возвращает пустой ответ
@@ -76,10 +84,11 @@
 | Пакет | Назначение |
 |-------|-----------|
 | `undici` | HTTP-запросы к SearXNG API и внешним URL (HTTPS, редиректы) |
+| `linkedom` | DOM-парсер для Defuddle (Node.js совместимый) |
+| `defuddle` | Многоуровневое извлечение контента: DOM analysis + CSS selectors → Markdown |
 | `node:url` | Парсинг URL для построения запросов к SearXNG |
 | `typebox` | Схемы параметров инструментов (встроено в pi) |
 | `@earendil-works/pi-ai` | StringEnum для enum-параметров (встроено в pi) |
-| `node-html-markdown` | Конвертация HTML → Markdown |
 
 ## Инструменты
 
