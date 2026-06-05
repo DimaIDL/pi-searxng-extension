@@ -8,13 +8,23 @@ import { Defuddle } from "defuddle/node";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import dotenv from "dotenv";
-
-// ===== .env reader — reads file on every call (dynamic config changes) =====
+// ===== .env reader — reads file on every call via fs (no dotenv/process.env caching) =====
 function readEnvFile(): Record<string, string | undefined> {
-  const result = dotenv.config({ path: path.join(__dirname, ".env") });
-  if (!result.parsed) throw new Error("dotenv.config() returned no parsed data — check .env file at " + path.join(__dirname, ".env"));
-  return result.parsed;
+  const envPath = path.join(__dirname, ".env");
+  try {
+    const content = fs.readFileSync(envPath, "utf-8");
+    const vars: Record<string, string | undefined> = {};
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIndex = trimmed.indexOf("=");
+      if (eqIndex === -1) continue;
+      vars[trimmed.substring(0, eqIndex).trim()] = trimmed.substring(eqIndex + 1).trim();
+    }
+    return vars;
+  } catch (e) {
+    throw new Error("Failed to read .env file at " + envPath + ": " + (e instanceof Error ? e.message : String(e)));
+  }
 }
 
 // ===== Type Definitions =====
