@@ -1,22 +1,19 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { StringEnum } from "@earendil-works/pi-ai";
-import http from "node:http";
+import { fetch as undiciFetch, request as undiciRequest } from "undici";
 import { URL } from "node:url";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 
 const SEARXNG_URL = process.env.SEARXNG_URL || "http://ub2026-mini:9098";
 
-function httpGet(url) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    const req = http.get({ hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + (parsed.search || ""), protocol: parsed.protocol }, (res) => {
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => { try { resolve(JSON.parse(data)); } catch(e) { reject(new Error("JSON parse failed")); }});
-    });
-    req.on("error", reject);
-  });
+async function httpGet(url) {
+  const res = await undiciFetch(url, { redirect: 'manual' });
+  if (res.status >= 300 && res.status < 400 && res.headers['location']) {
+    return httpGet(res.headers['location']);
+  }
+  const text = await res.text();
+  try { return JSON.parse(text); } catch(e) { throw new Error("JSON parse failed: " + e); }
 }
 
 function formatResults(data) {
@@ -35,16 +32,9 @@ function htmlToMarkdown(html) {
   try { return NodeHtmlMarkdown.translate(html).replace(/\s+/g, " ").replace(/([ \t]*)\n/g, "\n").trim(); } catch(e) { throw new Error("HTML to Markdown failed: " + e); }
 }
 
-function httpGetText(url) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    const req = http.get({ hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + (parsed.search || ""), protocol: parsed.protocol }, (res) => {
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => resolve(data));
-    });
-    req.on("error", reject);
-  });
+async function httpGetText(url) {
+  const res = await undiciFetch(url);
+  return res.text();
 }
 
 export default function(pi) {
