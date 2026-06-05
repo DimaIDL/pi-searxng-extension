@@ -74,6 +74,14 @@
 | `@earendil-works/pi-ai` | StringEnum для enum-параметров (встроено в pi) |
 | `node-html-markdown` | Конвертация HTML → Markdown |
 
+## Инструменты
+
+| Инструмент | Назначение |
+|------------|-----------|
+| `searxng_search` | Поиск через SearXNG API |
+| `searxng_fetch` | Чтение сайтов с конвертацией HTML → Markdown |
+| `searxng_fetch_raw` | Сохранение сырого HTML в `.pi/fetch-raw/` |
+
 ## Загрузка и тестирование
 
 Расширение загружается автоматически при `/reload`. Для ручного теста:
