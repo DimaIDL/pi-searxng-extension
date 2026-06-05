@@ -35,20 +35,6 @@ function generateRawBaseFilename(url) {
 }
 
 /**
- * Saves content to a file in the raw fetch directory.
- * @param url - The URL (used for filename generation)
- * @param content - Content to save
- * @param extension - File extension (e.g., '.html' or '.md')
- */
-function saveRawFile(url, content, extension) {
-  ensureRawFetchDir();
-  const baseFilename = generateRawBaseFilename(url);
-  const filepath = path.join(RAW_FETCH_DIR, `${baseFilename}${extension}`);
-  fs.writeFileSync(filepath, content, "utf-8");
-  return filepath;
-}
-
-/**
  * Saves raw HTML and Markdown files with the same base filename.
  * Generates the base name ONCE, then appends both extensions.
  * @returns {Object} paths to both saved files
