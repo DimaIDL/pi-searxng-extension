@@ -111,7 +111,7 @@ function saveSearchResults(query: string, data: SearxngSearchData): void {
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
   const safeQuery = query.replace(/[\s\/\*]/g, "_").substring(0, 50);
-  const filename = `${safeQuery}_${dateStr}.json`;
+  const filename = `search_${safeQuery}_${dateStr}.json`;
   const filepath = path.join(RAW_FETCH_DIR, filename);
   fs.writeFileSync(filepath, JSON.stringify(data, null, 2), "utf-8");
 }
@@ -231,6 +231,8 @@ async function httpGetText(url: string): Promise<string> {
   return res.text();
 }
 
+export default function(pi: ExtensionAPI) {
+
 // ===== SearXNG Search Tool =====
 /**
  * Инструмент для поиска через метапоисковик SearXNG.
@@ -255,7 +257,6 @@ async function httpGetText(url: string): Promise<string> {
  *   Если SAVE_RAW_DATA = true, результаты сохраняются в .pi/fetch-raw/
  *   как JSON файл с именем <запрос>_<дата>.json.
  */
-export default function(pi: ExtensionAPI) {
   pi.registerTool({
     name: "searxng_search",
     label: "SearXNG Search",
@@ -369,8 +370,8 @@ export default function(pi: ExtensionAPI) {
     name: "searxng_fetch_raw",
     label: "SearXNG Fetch Raw",
     description: SAVE_RAW_DATA
-      ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown. Same as searxng_fetch but saves the original HTML and converted Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
-      : "Fetch and convert to Markdown (Defuddle + JSON-LD). Saves raw HTML and Markdown to .pi/fetch-raw/.",
+      ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
+      : "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
 
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
@@ -394,7 +395,7 @@ export default function(pi: ExtensionAPI) {
           savedPaths = saveRawHtmlAndMarkdown(params.url, html, markdown);
         }
 
-        const details: { url: string; length: number; method: string; title: string } & (typeof SAVE_RAW_DATA extends true ? { savedPaths: RawFilePaths } : {}) = {
+        const details: { url: string; length: number; method: string; title: string; savedPaths?: RawFilePaths}  = {
           url: params.url,
           length: markdown.length,
           method: article.method,
