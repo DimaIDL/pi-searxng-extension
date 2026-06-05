@@ -9,6 +9,42 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
+// ===== Type Definitions =====
+
+interface ArticleResult {
+  content: string;
+  title: string;
+  author: string;
+  description: string;
+  published: string;
+  image: string;
+}
+
+interface DefuddleArticle extends ArticleResult {
+  wordCount?: number;
+  method: "defuddle";
+}
+
+interface JsonLdArticle extends ArticleResult {
+  method: "json-ld";
+}
+
+type ExtractedArticle = DefuddleArticle | JsonLdArticle;
+
+interface SearxngSearchData {
+  results?: Array<{
+    title?: string;
+    url?: string;
+    content?: string;
+    score?: number;
+  }>;
+}
+
+interface RawFilePaths {
+  htmlPath: string;
+  mdPath: string;
+}
+
 const SEARXNG_URL = process.env.SEARXNG_URL || "http://ub2026-mini:9098";
 
 // Raw fetch storage directory
@@ -17,7 +53,7 @@ const RAW_FETCH_DIR = path.join(".pi", "fetch-raw");
 /**
  * Creates the raw fetch directory if it doesn't exist.
  */
-function ensureRawFetchDir() {
+function ensureRawFetchDir(): void {
   try { fs.mkdirSync(RAW_FETCH_DIR, { recursive: true }); } catch (e) { /* ignore */ }
 }
 
@@ -25,7 +61,7 @@ function ensureRawFetchDir() {
  * Generates a base filename for raw fetch storage.
  * Format: <domain>_<hash 10 chars>_<YYYYMMDD_HHMMSS>
  */
-function generateRawBaseFilename(url) {
+function generateRawBaseFilename(url: string): string {
   const parsed = new URL(url);
   const domain = parsed.hostname.replace(/\./g, "_");
   const hash = crypto.createHash("md5").update(url).digest("hex").substring(0, 10);
@@ -37,9 +73,8 @@ function generateRawBaseFilename(url) {
 /**
  * Saves raw HTML and Markdown files with the same base filename.
  * Generates the base name ONCE, then appends both extensions.
- * @returns {Object} paths to both saved files
  */
-function saveRawHtmlAndMarkdown(url, html, markdown) {
+function saveRawHtmlAndMarkdown(url: string, html: string, markdown: string): RawFilePaths {
   ensureRawFetchDir();
   const baseFilename = generateRawBaseFilename(url);
   const htmlPath = path.join(RAW_FETCH_DIR, `${baseFilename}.html`);
@@ -49,13 +84,19 @@ function saveRawHtmlAndMarkdown(url, html, markdown) {
   return { htmlPath, mdPath };
 }
 
-async function httpGet(url) {
+/**
+ * Fetches SearXNG API and returns parsed JSON.
+ */
+async function httpGet(url: string): Promise<SearxngSearchData> {
   const res = await undiciFetch(url);
   const text = await res.text();
   try { return JSON.parse(text); } catch(e) { throw new Error("JSON parse failed: " + e); }
 }
 
-function formatResults(data) {
+/**
+ * Formats SearXNG search results into a readable string.
+ */
+function formatResults(data: SearxngSearchData): string {
   if (!data.results || data.results.length === 0) return "No results found.";
   const formatted = data.results.map((r, i) => {
     const title = r.title || "(no title)";
@@ -71,7 +112,7 @@ function formatResults(data) {
  * Extract article content from HTML using Defuddle (DOM analysis + CSS selectors).
  * Returns cleaned Markdown with metadata.
  */
-async function extractArticle(html, url) {
+async function extractArticle(html: string, url: string): Promise<DefuddleArticle> {
   try {
     const { document } = parseHTML(html);
     const result = await Defuddle(document, url, { markdown: true });
@@ -83,6 +124,7 @@ async function extractArticle(html, url) {
       published: result.published || "",
       image: result.image || "",
       wordCount: result.wordCount || 0,
+      method: "defuddle",
     };
   } catch (e) {
     throw new Error("Defuddle extraction failed: " + e);
@@ -93,7 +135,7 @@ async function extractArticle(html, url) {
  * Fallback: extract article content from JSON-LD metadata.
  * Used when Defuddle cannot find main content.
  */
-function extractJsonLd(html) {
+function extractJsonLd(html: string): JsonLdArticle | null {
   try {
     const matches = html.matchAll(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/g);
     for (const match of matches) {
@@ -110,6 +152,7 @@ function extractJsonLd(html) {
             author: typeof data.author === "string" ? data.author : JSON.stringify(data.author),
             published: data.datePublished || "",
             image: data.image || "",
+            method: "json-ld",
           };
         }
       } catch (e) { /* skip invalid JSON */ }
@@ -123,7 +166,7 @@ function extractJsonLd(html) {
  * Level 1: Defuddle (DOM analysis + CSS selectors)
  * Level 2: JSON-LD fallback
  */
-async function extractArticleMultiLevel(html, url) {
+async function extractArticleMultiLevel(html: string, url: string): Promise<ExtractedArticle> {
   // Level 1: Try Defuddle first
   try {
     const result = await extractArticle(html, url);
@@ -141,7 +184,10 @@ async function extractArticleMultiLevel(html, url) {
   throw new Error("Content extraction failed at all levels");
 }
 
-async function httpGetText(url) {
+/**
+ * Fetches a URL and returns raw text content.
+ */
+async function httpGetText(url: string): Promise<string> {
   const res = await undiciFetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
