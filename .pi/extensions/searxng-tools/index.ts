@@ -312,10 +312,11 @@ export default function(pi: ExtensionAPI) {
         const data = await httpGet(url.toString());
         // Сохраняем результаты поиска если включено
         const jsonPath = saveSearchResults(params.query, data);
-        return {
-          content: [{ type: "text", text: formatResults(data) }],
-          details: { resultsCount: data.results?.length || 0, savedPaths: jsonPath ? { jsonPath } : undefined },
-        };
+        let text = formatResults(data);
+        if (jsonPath) {
+          text += "\n\n[Results saved to .pi/fetch-raw/" + path.basename(jsonPath) + "]";
+        }
+        return { content: [{ type: "text", text }] };
       } catch (error) {
         throw new Error("SearXNG search failed: " + (error instanceof Error ? error.message : String(error)));
       }
