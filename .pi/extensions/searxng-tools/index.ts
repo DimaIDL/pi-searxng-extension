@@ -4,8 +4,45 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { fetch as undiciFetch, request as undiciRequest } from "undici";
 import { URL } from "node:url";
 import { NodeHtmlMarkdown } from "node-html-markdown";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
 
 const SEARXNG_URL = process.env.SEARXNG_URL || "http://ub2026-mini:9098";
+
+// Raw fetch storage directory
+const RAW_FETCH_DIR = path.join(".pi", "fetch-raw");
+
+/**
+ * Creates the raw fetch directory if it doesn't exist.
+ */
+function ensureRawFetchDir() {
+  try { fs.mkdirSync(RAW_FETCH_DIR, { recursive: true }); } catch (e) { /* ignore */ }
+}
+
+/**
+ * Generates a filename for raw HTML storage.
+ * Format: <domain>_<hash 10 chars>_<YYYYMMDD_HHMMSS>.html
+ */
+function generateRawFilename(url) {
+  const parsed = new URL(url);
+  const domain = parsed.hostname.replace(/\./g, "_");
+  const hash = crypto.createHash("md5").update(url).digest("hex").substring(0, 10);
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
+  return `${domain}_${hash}_${dateStr}.html`;
+}
+
+/**
+ * Saves raw HTML content to a file in the raw fetch directory.
+ */
+function saveRawHtml(url, html) {
+  ensureRawFetchDir();
+  const filename = generateRawFilename(url);
+  const filepath = path.join(RAW_FETCH_DIR, filename);
+  fs.writeFileSync(filepath, html, "utf-8");
+  return filepath;
+}
 
 async function httpGet(url) {
   const res = await undiciFetch(url);
@@ -87,6 +124,34 @@ export default function(pi) {
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
         return { content: [{ type: "text", text: markdown }], details: { url: params.url, length: markdown.length }};
+      } catch (error) {
+        throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
+      }
+    },
+  });
+
+  // ===== SearXNG Fetch Raw Tool =====
+  pi.registerTool({
+    name: "searxng_fetch_raw",
+    label: "SearXNG Fetch Raw",
+    description:
+      "Fetch and save raw HTML content. Saves to .pi/fetch-raw/ with auto-generated filename.",
+
+    parameters: Type.Object({
+      url: Type.String({ description: "The URL to fetch" }),
+    }),
+
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
+      onUpdate?.({ content: [{ type: "text", text: "Fetching raw HTML from " + params.url + "..." }] });
+
+      try {
+        const html = await httpGetText(params.url);
+        const filepath = saveRawHtml(params.url, html);
+        return {
+          content: [{ type: "text", text: `Saved to ${filepath}` }],
+          details: { url: params.url, savedPath: filepath },
+        };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
       }
