@@ -22,27 +22,40 @@ function ensureRawFetchDir() {
 }
 
 /**
- * Generates a filename for raw HTML storage.
- * Format: <domain>_<hash 10 chars>_<YYYYMMDD_HHMMSS>.html
+ * Generates a base filename for raw fetch storage.
+ * Format: <domain>_<hash 10 chars>_<YYYYMMDD_HHMMSS>
  */
-function generateRawFilename(url) {
+function generateRawBaseFilename(url) {
   const parsed = new URL(url);
   const domain = parsed.hostname.replace(/\./g, "_");
   const hash = crypto.createHash("md5").update(url).digest("hex").substring(0, 10);
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
-  return `${domain}_${hash}_${dateStr}.html`;
+  return `${domain}_${hash}_${dateStr}`;
 }
 
 /**
- * Saves raw HTML content to a file in the raw fetch directory.
+ * Saves content to a file in the raw fetch directory.
+ * @param url - The URL (used for filename generation)
+ * @param content - Content to save
+ * @param extension - File extension (e.g., '.html' or '.md')
  */
-function saveRawHtml(url, html) {
+function saveRawFile(url, content, extension) {
   ensureRawFetchDir();
-  const filename = generateRawFilename(url);
-  const filepath = path.join(RAW_FETCH_DIR, filename);
-  fs.writeFileSync(filepath, html, "utf-8");
+  const baseFilename = generateRawBaseFilename(url);
+  const filepath = path.join(RAW_FETCH_DIR, `${baseFilename}${extension}`);
+  fs.writeFileSync(filepath, content, "utf-8");
   return filepath;
+}
+
+/**
+ * Saves raw HTML and Markdown files with the same base filename.
+ * @returns {Object} paths to both saved files
+ */
+function saveRawHtmlAndMarkdown(url, html, markdown) {
+  const htmlPath = saveRawFile(url, html, ".html");
+  const mdPath = saveRawFile(url, markdown, ".md");
+  return { htmlPath, mdPath };
 }
 
 async function httpGet(url) {
@@ -229,12 +242,12 @@ export default function(pi) {
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
 
-        // Save raw HTML
-        const filepath = saveRawHtml(params.url, html);
+        // Save raw HTML and Markdown
+        const { htmlPath, mdPath } = saveRawHtmlAndMarkdown(params.url, html, markdown);
 
         return {
           content: [{ type: "text", text: markdown }],
-          details: { url: params.url, length: markdown.length, method: article.method, title: article.title, savedPath: filepath },
+          details: { url: params.url, length: markdown.length, method: article.method, title: article.title, savedPaths: { htmlPath, mdPath } },
         };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
