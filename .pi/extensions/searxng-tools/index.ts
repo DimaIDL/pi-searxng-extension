@@ -52,6 +52,18 @@ interface RawFilePaths {
 // Priority: 1. OS env (set/$env) → 2. .env file → 3. Default placeholder
 const SEARXNG_URL = process.env.SEARXNG_URL || dotenvConfig?.parsed?.SEARXNG_URL || "<SEARXNG_URL>";
 
+// ===== Configuration =====
+
+/**
+ * Приоритет: 1. OS env (set/$env) → 2. .env file → 3. Default.
+ * По умолчанию true — сырые данные (.html и .md) сохраняются в .pi/fetch-raw/.
+ */
+const SAVE_RAW_DATA = process.env.SAVE_RAW_DATA !== undefined
+  ? process.env.SAVE_RAW_DATA === "true"
+  : dotenvConfig?.parsed?.SAVE_RAW_DATA !== undefined
+    ? dotenvConfig.parsed.SAVE_RAW_DATA === "true"
+    : true;
+
 // Raw fetch storage directory
 const RAW_FETCH_DIR = path.join(".pi", "fetch-raw");
 
@@ -76,8 +88,8 @@ function generateRawBaseFilename(url: string): string {
 }
 
 /**
- * Saves raw HTML and Markdown files with the same base filename.
- * Generates the base name ONCE, then appends both extensions.
+ * Сохраняет сырой HTML и Markdown файлы с одинаковым базовым именем.
+ * Генерирует имя ОДИН раз, затем добавляет оба расширения.
  */
 function saveRawHtmlAndMarkdown(url: string, html: string, markdown: string): RawFilePaths {
   ensureRawFetchDir();
@@ -87,6 +99,21 @@ function saveRawHtmlAndMarkdown(url: string, html: string, markdown: string): Ra
   fs.writeFileSync(htmlPath, html, "utf-8");
   fs.writeFileSync(mdPath, markdown, "utf-8");
   return { htmlPath, mdPath };
+}
+
+/**
+ * Сохраняет результаты поиска SearXNG в JSON файл.
+ * Используется только если SAVE_RAW_DATA = true.
+ */
+function saveSearchResults(query: string, data: SearxngSearchData): void {
+  if (!SAVE_RAW_DATA) return;
+  ensureRawFetchDir();
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
+  const safeQuery = query.replace(/[\s\/\*]/g, "_").substring(0, 50);
+  const filename = `${safeQuery}_${dateStr}.json`;
+  const filepath = path.join(RAW_FETCH_DIR, filename);
+  fs.writeFileSync(filepath, JSON.stringify(data, null, 2), "utf-8");
 }
 
 /**
@@ -204,6 +231,30 @@ async function httpGetText(url: string): Promise<string> {
   return res.text();
 }
 
+// ===== SearXNG Search Tool =====
+/**
+ * Инструмент для поиска через метапоисковик SearXNG.
+ *
+ * Назначение:
+ *   Выполняет поисковый запрос к локальному экземпляру SearXNG и возвращает
+ *   агрегированные результаты из 249+ поисковых сервисов (Google, Bing,
+ *   DuckDuckGo, Wikipedia и др.).
+ *
+ * Параметры:
+ *   query        — строка поиска (обязательно)
+ *   language     — код языка (например "ru", "en"), по умолчанию все языки
+ *   safesearch   — 0 = выключен, 1 = умеренный, 2 = строгий
+ *   time_range   — фильтр по времени: "day", "month", "year"
+ *
+ * Возвращает:
+ *   content      — отформатированный список результатов (нумерация, заголовок,
+ *                  URL, сниппет, score релевантности)
+ *   details      — resultsCount: количество найденных результатов
+ *
+ * Особенности:
+ *   Если SAVE_RAW_DATA = true, результаты сохраняются в .pi/fetch-raw/
+ *   как JSON файл с именем <запрос>_<дата>.json.
+ */
 export default function(pi: ExtensionAPI) {
   pi.registerTool({
     name: "searxng_search",
@@ -226,6 +277,8 @@ export default function(pi: ExtensionAPI) {
       onUpdate?.({ content: [{ type: "text", text: "Searching SearXNG..." }] });
       try {
         const data = await httpGet(url.toString());
+        // Сохраняем результаты поиска если включено
+        saveSearchResults(params.query, data);
         return { content: [{ type: "text", text: formatResults(data) }], details: { resultsCount: data.results?.length || 0 }};
       } catch (error) {
         throw new Error("SearXNG search failed: " + (error instanceof Error ? error.message : String(error)));
@@ -233,6 +286,29 @@ export default function(pi: ExtensionAPI) {
     },
   });
 
+// ===== SearXNG Fetch Tool =====
+/**
+ * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown.
+ *
+ * Назначение:
+ *   Загружает страницу по URL, извлекает основной контент статьи и
+ *   конвертирует его в чистый Markdown. Использует многоуровневый подход:
+ *   1. Defuddle (DOM analysis + CSS selectors) — удаляет sidebar, footer, ads
+ *   2. JSON-LD fallback — парсит <script type="application/ld+json">
+ *
+ * Параметры:
+ *   url          — URL страницы для загрузки (обязательно)
+ *   max_length   — максимальная длина результата в символах (по умолчанию 10000)
+ *
+ * Возвращает:
+ *   content      — чистый Markdown с текстом статьи
+ *   details      — url, length, method ("defuddle" или "json-ld"), title
+ *
+ * Особенности:
+ *   - Автоматически удаляет рекламу, меню, футер по CSS-классам
+ *   - Возвращает metadata: заголовок, автор, описание, дата публикации
+ *   - Если Defuddle не справляется — используется JSON-LD fallback
+ */
   pi.registerTool({
     name: "searxng_fetch",
     label: "SearXNG Fetch",
@@ -261,12 +337,40 @@ export default function(pi: ExtensionAPI) {
     },
   });
 
-  // ===== SearXNG Fetch Raw Tool =====
+// ===== SearXNG Fetch Raw Tool =====
+/**
+ * Инструмент для чтения веб-страниц с сохранением сырых данных.
+ *
+ * Назначение:
+ *   Выполняет те же действия, что и searxng_fetch (загрузка страницы,
+ *   извлечение контента через Defuddle + JSON-LD, конвертация в Markdown),
+ *   НО дополнительно сохраняет:
+ *   - Сырой HTML → .pi/fetch-raw/<имя>.html
+ *   - Конвертированный Markdown → .pi/fetch-raw/<имя>.md
+ *
+ * Параметры:
+ *   url          — URL страницы для загрузки (обязательно)
+ *   max_length   — максимальная длина результата в символах (по умолчанию 10000)
+ *
+ * Возвращает:
+ *   content      — чистый Markdown с текстом статьи
+ *   details      — url, length, method, title, savedPaths: { htmlPath, mdPath }
+ *
+ * Особенности:
+ *   - Сохраняет оба файла (.html и .md) с одинаковым базовым именем
+ *   - Имя файла: <домен>_<хэш 10 символов>_<YYYYMMDD_HHMMSS>.<расширение>
+ *   - ⚠️ НЕ читать сохранённые файлы без особого разрешения!
+ *
+ * Зависит от SAVE_RAW_DATA:
+ *   Если SAVE_RAW_DATA = true, сохраняет сырые данные и возвращает savedPaths.
+ *   Если false — не сохраняет файлы и не возвращает savedPaths.
+ */
   pi.registerTool({
     name: "searxng_fetch_raw",
     label: "SearXNG Fetch Raw",
-    description:
-      "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML. Same as searxng_fetch but saves the original HTML to .pi/fetch-raw/. Do NOT read saved files without special permission.",
+    description: SAVE_RAW_DATA
+      ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown. Same as searxng_fetch but saves the original HTML and converted Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
+      : "Fetch and convert to Markdown (Defuddle + JSON-LD). Saves raw HTML and Markdown to .pi/fetch-raw/.",
 
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
@@ -275,7 +379,7 @@ export default function(pi: ExtensionAPI) {
 
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
-      onUpdate?.({ content: [{ type: "text", text: "Fetching and saving raw HTML from " + params.url + "..." }] });
+      onUpdate?.({ content: [{ type: "text", text: "Fetching " + params.url + "..." }] });
 
       try {
         const html = await httpGetText(params.url);
@@ -284,13 +388,23 @@ export default function(pi: ExtensionAPI) {
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
 
-        // Save raw HTML and Markdown
-        const { htmlPath, mdPath } = saveRawHtmlAndMarkdown(params.url, html, markdown);
+        // Save raw HTML and Markdown only if SAVE_RAW_DATA is true
+        let savedPaths: RawFilePaths | undefined;
+        if (SAVE_RAW_DATA) {
+          savedPaths = saveRawHtmlAndMarkdown(params.url, html, markdown);
+        }
 
-        return {
-          content: [{ type: "text", text: markdown }],
-          details: { url: params.url, length: markdown.length, method: article.method, title: article.title, savedPaths: { htmlPath, mdPath } },
+        const details: { url: string; length: number; method: string; title: string } & (typeof SAVE_RAW_DATA extends true ? { savedPaths: RawFilePaths } : {}) = {
+          url: params.url,
+          length: markdown.length,
+          method: article.method,
+          title: article.title,
         };
+        if (SAVE_RAW_DATA) {
+          details.savedPaths = savedPaths!;
+        }
+
+        return { content: [{ type: "text", text: markdown }], details };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
       }
