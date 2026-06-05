@@ -75,13 +75,21 @@ function ensureRawFetchDir(): void {
 }
 
 /**
+ * Generates a short hash from any string.
+ * Returns first 10 hex chars of MD5 digest.
+ */
+function generateUrlHash(input: string): string {
+  return crypto.createHash("md5").update(input).digest("hex").substring(0, 10);
+}
+
+/**
  * Generates a base filename for raw fetch storage.
  * Format: <domain>_<hash 10 chars>_<YYYYMMDD_HHMMSS>
  */
 function generateRawBaseFilename(url: string): string {
   const parsed = new URL(url);
   const domain = parsed.hostname.replace(/\./g, "_");
-  const hash = crypto.createHash("md5").update(url).digest("hex").substring(0, 10);
+  const hash = generateUrlHash(url);
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
   return `${domain}_${hash}_${dateStr}`;
@@ -102,7 +110,7 @@ function saveRawHtmlAndMarkdown(url: string, html: string, markdown: string): Ra
 }
 
 /**
- * Сохраняет результаты поиска SearXNG в JSON файл.
+ * Сохраняет результаты поиска SearXNG в структурированный JSON файл.
  * Используется только если SAVE_RAW_DATA = true.
  */
 function saveSearchResults(query: string, data: SearxngSearchData): void {
@@ -110,10 +118,11 @@ function saveSearchResults(query: string, data: SearxngSearchData): void {
   ensureRawFetchDir();
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
-  const safeQuery = query.replace(/[\s\/\*]/g, "_").substring(0, 50);
-  const filename = `search_${safeQuery}_${dateStr}.json`;
+  const safeQuery = query.replace(/[\s\/\*]/g, "_").substring(0, 15);
+  const hash = generateUrlHash(query);
+  const filename = `search_${safeQuery}_${hash}_${dateStr}.json`;
   const filepath = path.join(RAW_FETCH_DIR, filename);
-  fs.writeFileSync(filepath, JSON.stringify(data, null, 2), "utf-8");
+  fs.writeFileSync(filepath, JSON.stringify({ query, data }, null, 2), "utf-8");
 }
 
 /**
@@ -287,8 +296,10 @@ export default function(pi: ExtensionAPI) {
     },
   });
 
-// ===== SearXNG Fetch Tool =====
+// ===== SearXNG Fetch Tool — DO NOT REMOVE until ~2026.09.05 =====
 /**
+ * ⚠️ НЕ УДАЛЯТЬ! Закомментировано временно до ~2026.09.05.
+ *
  * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown.
  *
  * Назначение:
@@ -310,6 +321,7 @@ export default function(pi: ExtensionAPI) {
  *   - Возвращает metadata: заголовок, автор, описание, дата публикации
  *   - Если Defuddle не справляется — используется JSON-LD fallback
  */
+/*
   pi.registerTool({
     name: "searxng_fetch",
     label: "SearXNG Fetch",
@@ -337,17 +349,17 @@ export default function(pi: ExtensionAPI) {
       }
     },
   });
+*/
 
-// ===== SearXNG Fetch Raw Tool =====
+// ===== Web Fetch Tool =====
 /**
- * Инструмент для чтения веб-страниц с сохранением сырых данных.
+ * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown
+ * и сохранением сырых данных (.html + .md) в .pi/fetch-raw/.
  *
  * Назначение:
- *   Выполняет те же действия, что и searxng_fetch (загрузка страницы,
- *   извлечение контента через Defuddle + JSON-LD, конвертация в Markdown),
- *   НО дополнительно сохраняет:
- *   - Сырой HTML → .pi/fetch-raw/<имя>.html
- *   - Конвертированный Markdown → .pi/fetch-raw/<имя>.md
+ *   Загружает страницу по URL, извлекает основной контент через Defuddle
+ *   (DOM analysis) или JSON-LD fallback, конвертирует в Markdown,
+ *   и дополнительно сохраняет сырой HTML + готовый Markdown.
  *
  * Параметры:
  *   url          — URL страницы для загрузки (обязательно)
@@ -367,8 +379,8 @@ export default function(pi: ExtensionAPI) {
  *   Если false — не сохраняет файлы и не возвращает savedPaths.
  */
   pi.registerTool({
-    name: "searxng_fetch_raw",
-    label: "SearXNG Fetch Raw",
+    name: "web_fetch",
+    label: "Web Fetch",
     description: SAVE_RAW_DATA
       ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
       : "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
