@@ -8,10 +8,7 @@ import { NodeHtmlMarkdown } from "node-html-markdown";
 const SEARXNG_URL = process.env.SEARXNG_URL || "http://ub2026-mini:9098";
 
 async function httpGet(url) {
-  const res = await undiciFetch(url, { redirect: 'manual' });
-  if (res.status >= 300 && res.status < 400 && res.headers['location']) {
-    return httpGet(res.headers['location']);
-  }
+  const res = await undiciFetch(url);
   const text = await res.text();
   try { return JSON.parse(text); } catch(e) { throw new Error("JSON parse failed: " + e); }
 }
@@ -33,7 +30,9 @@ function htmlToMarkdown(html) {
 }
 
 async function httpGetText(url) {
-  const res = await undiciFetch(url);
+  const res = await undiciFetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+  });
   return res.text();
 }
 
