@@ -5,6 +5,9 @@
 - [x] Basic `searxng_fetch` testing across multiple news sources
 - [x] HTTPS support added to fetch tool
 - [x] Redirect handling improved for most sites
+- [x] Replaced node-html-markdown with Defuddle + JSON-LD fallback
+- [x] Round 2 test: 87.5% success (7/8 sources)
+- [x] TypeScript types added to all functions
 
 ---
 
@@ -56,11 +59,24 @@ searxng_fetch(url) → успех? ✅ вернуть результат
 |----------|---------|--------|
 | **novosti-kosmonavtiki.ru** | Сайт не работает (fetch failed) | 🚫 Исключён из тестов |
 | **gazeta.ru** | SSI + mod_include — требует Playwright fallback | ⏳ Отложено до v2 |
-| **vedomosti.ru** | SPA — JS рендеринг, контент недоступен без браузера | ⏳ Отложено до v2 |
 
 ---
 
-## 📊 Текущая статистика (v1)
+## 📊 Текущая статистика — Раунд 2 (Defuddle)
+
+| Источник | Статус | Причина |
+|----------|--------|---------|
+| Ведомости (HTTPS) | ✅ Полный текст статьи | Defuddle извлек контент |
+| Лента.ру (HTTPS) | ✅ Полный текст статьи | Простой HTML |
+| EADaily ×2 | ✅ Полный текст статьи | Простой HTML |
+| PROKOSMOS | ✅ Полный текст статьи | Простой HTML |
+| ИНТЕРФАКС | ✅ Полный текст статьи | Редирект обработан |
+| Жэньминь Жибао | ✅ Текст статьи | Простой HTML |
+| Газета.ру | ❌ Failed — Content extraction failed at all levels | SSI + mod_include |
+
+**Успешность:** 7/8 (87.5%) для источников с серверным рендерингом, 0/1 (0%) для SSI.
+
+## 📊 Текущая статистика — Раунд 1 (node-html-markdown)
 
 | Источник | Статус | Причина |
 |----------|--------|---------|

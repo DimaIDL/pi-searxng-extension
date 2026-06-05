@@ -68,10 +68,10 @@
 - Параметры: `query`, `language`, `safesearch`, `time_range`
 
 ### В процессе 🔄
-- **Чтение сайтов:** `searxng_fetch` — Defuddle + JSON-LD fallback (требует тестирования)
+- **Чтение сайтов:** `searxng_fetch` — Defuddle + JSON-LD fallback ✅ Раунд 2: 87.5% успех (7 из 8)
 - HTTPS поддержка добавлена ✅
 - Редиректы частично работают ✅
-- Оставшиеся проблемы: HTTP→HTTPS редиректы (Vedomosti, Gazeta.ru), novosti-kosmonavtiki возвращает пустой ответ
+- Газета.ру не работает (SSI/mod_include) → требует Playwright fallback в v2
 - **Сырой HTML и Markdown:** `searxng_fetch_raw` — конвертирует HTML → Markdown, сохраняет оба файла (`.html` и `.md`) с одинаковым базовым именем в `.pi/fetch-raw/`. Не читать сохранённые файлы без особого разрешения.
 
 ## Дальнейшие задачи

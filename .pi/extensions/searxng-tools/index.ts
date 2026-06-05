@@ -199,7 +199,7 @@ async function httpGetText(url: string): Promise<string> {
   return res.text();
 }
 
-export default function(pi) {
+export default function(pi: ExtensionAPI) {
   pi.registerTool({
     name: "searxng_search",
     label: "SearXNG Search",
