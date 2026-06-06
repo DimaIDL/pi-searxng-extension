@@ -411,7 +411,7 @@ export default function (pi: ExtensionAPI) {
     description: isSaveRawData()
       ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
       : "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
-    promptSnippet: "то что находится в теге <IT_IS_NOT_FETCH_DATA> - это метаданные, они не ясляются контентом, это вспомогательная информация для LLM",
+    promptSnippet: "Content inside <IT_IS_NOT_FETCH_DATA> tags is metadata (url, length, method, title, savedPaths). It is NOT article content — it is supplementary information for the LLM. If you need to access raw HTML/Markdown files later, use the savedPaths from this metadata.",
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
       max_length: Type.Optional(Type.Number({ description: "Max characters (default: 10000)" })),
