@@ -25,10 +25,6 @@
 .pi/extensions/searxng-tools/
 ├── package.json      # Зависимости + точка входа (pi.extensions)
 ├── index.ts          # Код расширения (экспортирует default function)
-└── node_modules/     # Локальные зависимости
-    ├── defuddle/
-    ├── linkedom/
-    └── undici/
 ```
 
 ### Автоматически создаваемые папки
@@ -40,33 +36,27 @@
 - **API поиска:** `GET /search?q=...&format=json`
 - **Конвертация HTML → Markdown:** Defuddle (DOM analysis + CSS selectors) + JSON-LD fallback
 
-## Эпы разработки
+## Конфигурирование
 
-### Epic 1: Исследование и анализ MCP-интеграции ✅
-- Изучена документация SearXNG (docs/searxng/)
-- Протестирован HTTP API SearXNG (`http://ub2026-mini:9098`)
-- Проанализирована реализация `mcp-searxng` (npm package)
-- Определён формат JSON-ответа поиска
+Расширение поддерживает два источника конфигурации с приоритетом: **OS env → .env → default**.
 
-### Epic 2: Разработка расширения ✅
-- Создано расширение в `.pi/extensions/searxng-tools/`
-- Реализованы три инструмента: `searxng_search`, `searxng_fetch`, `searxng_fetch_raw`
-- Настроены зависимости (`node-html-markdown`, `undici`)
-- Протестирован поиск — работает корректно
+### Переменные среды
+| Переменная | Описание | По умолчанию |
+|------------|----------|--------------|
+| `SEARXNG_URL` | URL экземпляра SearXNG | `http://ub2026-mini:9098` |
+| `SAVE_RAW_DATA` | Сохранять сырые данные (.html + .md) и JSON поиска в `.pi/fetch-raw/` | `true` |
 
-### Epic 3: Многоуровневое извлечение контента ✅
-- Заменён `node-html-markdown` на **Defuddle** (DOM analysis + CSS selectors)
-- Добавлен **JSON-LD fallback** как второй уровень извлечения
-- Defuddle автоматически удаляет sidebar, footer, ads по классам и атрибутам
-- JSON-LD парсит `<script type="application/ld+json">` для бэкапа
-- Возвращает metadata: title, author, description, published, image
+### Файл `.env`
+Расширение динамически читает файл `.env` при каждом вызове (без кэширования), поэтому изменения применяются сразу без перезагрузки.
 
-### Epic 4: Рефакторинг и оптимизация ✅
-- Вынесен `generateUrlHash()` в отдельный переиспользуемый метод
-- Переменная конфигурации `SAVE_RAW_DATA` (приоритет: OS env → .env → default true)
-- safeQuery урезан до 15 символов (было 50)
-- `searxng_fetch_raw` переименован в `web_fetch`
-- `searxng_fetch` закомментирован до ~2026.09.05
+**Путь:** `.pi/extensions/searxng-tools/.env`
+
+**Пример:**
+```bash
+SEARXNG_URL=http://ub2026-mini:9098
+SAVE_RAW_DATA=true
+```
+
 
 ## Текущий результат
 
@@ -74,18 +64,7 @@
 - **Поиск:** `searxng_search` — возвращает агрегированные результаты из 249+ поисковых сервисов
 - Формат вывода: нумерованный список с title, URL, snippet и score релевантности
 - Параметры: `query`, `language`, `safesearch`, `time_range`
-
-### В процессе 🔄
-- **Чтение сайтов:** `searxng_fetch` — ~~закомментирован~~ (до ~2026.09.05). Раунд 2: 87.5% успех (7 из 8)
-- HTTPS поддержка добавлена ✅
-- Редиректы частично работают ✅
-- Газета.ру не работает (SSI/mod_include) → требует Playwright fallback в v2
 - **Сырой HTML и Markdown:** `web_fetch` — конвертирует HTML → Markdown, сохраняет оба файла (`.html` и `.md`) с одинаковым базовым именем в `.pi/fetch-raw/`. Не читать сохранённые файлы без особого разрешения.
-
-## Дальнейшие задачи
-
-1. **Фикс чтения сайтов** — обработка замечаний по `searxng_fetch`
-2. **Debug search** — добавить отладочный вариант поиска для получения и анализа метаданных от поисковиков с целью их конфигурации (для понимания, какие движки возвращают какие данные)
 
 ## Зависимости
 
