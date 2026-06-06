@@ -110,7 +110,7 @@ function generateRawBaseFilename(url: string): string {
   const domain = parsed.hostname.replace(/\./g, "_");
   const hash = generateUrlHash(url);
   const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
   return `${domain}_${hash}_${dateStr}`;
 }
 
@@ -137,7 +137,7 @@ function saveSearchResults(query: string, data: SearxngSearchData): string | und
   if (!isSaveRawData()) return;
   ensureRawFetchDir();
   const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
   const safeQuery = query.replace(/[\s\/\*]/g, "_").substring(0, 15);
   const hash = generateUrlHash(query);
   const filename = `search_${safeQuery}_${hash}_${dateStr}.json`;
@@ -152,7 +152,7 @@ function saveSearchResults(query: string, data: SearxngSearchData): string | und
 async function httpGet(url: string): Promise<SearxngSearchData> {
   const res = await undiciFetch(url);
   const text = await res.text();
-  try { return JSON.parse(text); } catch(e) { throw new Error("JSON parse failed: " + e); }
+  try { return JSON.parse(text); } catch (e) { throw new Error("JSON parse failed: " + e); }
 }
 
 /**
@@ -261,32 +261,32 @@ async function httpGetText(url: string): Promise<string> {
   return res.text();
 }
 
-export default function(pi: ExtensionAPI) {
+export default function (pi: ExtensionAPI) {
 
-// ===== SearXNG Search Tool =====
-/**
- * Инструмент для поиска через метапоисковик SearXNG.
- *
- * Назначение:
- *   Выполняет поисковый запрос к локальному экземпляру SearXNG и возвращает
- *   агрегированные результаты из 249+ поисковых сервисов (Google, Bing,
- *   DuckDuckGo, Wikipedia и др.).
- *
- * Параметры:
- *   query        — строка поиска (обязательно)
- *   language     — код языка (например "ru", "en"), по умолчанию все языки
- *   safesearch   — 0 = выключен, 1 = умеренный, 2 = строгий
- *   time_range   — фильтр по времени: "day", "month", "year"
- *
- * Возвращает:
- *   content      — отформатированный список результатов (нумерация, заголовок,
- *                  URL, сниппет, score релевантности)
- *   details      — resultsCount: количество найденных результатов, savedPaths: { jsonPath }
- *
- * Особенности:
- *   Если SAVE_RAW_DATA = true, результаты сохраняются в .pi/fetch-raw/
- *   как JSON файл с именем search_<запрос>_<хэш>_<дата>.json.
- */
+  // ===== SearXNG Search Tool =====
+  /**
+   * Инструмент для поиска через метапоисковик SearXNG.
+   *
+   * Назначение:
+   *   Выполняет поисковый запрос к локальному экземпляру SearXNG и возвращает
+   *   агрегированные результаты из 249+ поисковых сервисов (Google, Bing,
+   *   DuckDuckGo, Wikipedia и др.).
+   *
+   * Параметры:
+   *   query        — строка поиска (обязательно)
+   *   language     — код языка (например "ru", "en"), по умолчанию все языки
+   *   safesearch   — 0 = выключен, 1 = умеренный, 2 = строгий
+   *   time_range   — фильтр по времени: "day", "month", "year"
+   *
+   * Возвращает:
+   *   content      — отформатированный список результатов (нумерация, заголовок,
+   *                  URL, сниппет, score релевантности)
+   *   details      — resultsCount: количество найденных результатов, savedPaths: { jsonPath }
+   *
+   * Особенности:
+   *   Если SAVE_RAW_DATA = true, результаты сохраняются в .pi/fetch-raw/
+   *   как JSON файл с именем search_<запрос>_<хэш>_<дата>.json.
+   */
   pi.registerTool({
     name: "searxng_search",
     label: "SearXNG Search",
@@ -323,95 +323,95 @@ export default function(pi: ExtensionAPI) {
     },
   });
 
-// ===== SearXNG Fetch Tool — DO NOT REMOVE until ~2026.09.05 =====
-/**
- * ⚠️ НЕ УДАЛЯТЬ! Закомментировано временно до ~2026.09.05.
- *
- * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown.
- *
- * Назначение:
- *   Загружает страницу по URL, извлекает основной контент статьи и
- *   конвертирует его в чистый Markdown. Использует многоуровневый подход:
- *   1. Defuddle (DOM analysis + CSS selectors) — удаляет sidebar, footer, ads
- *   2. JSON-LD fallback — парсит <script type="application/ld+json">
- *
- * Параметры:
- *   url          — URL страницы для загрузки (обязательно)
- *   max_length   — максимальная длина результата в символах (по умолчанию 10000)
- *
- * Возвращает:
- *   content      — чистый Markdown с текстом статьи
- *   details      — url, length, method ("defuddle" или "json-ld"), title
- *
- * Особенности:
- *   - Автоматически удаляет рекламу, меню, футер по CSS-классам
- *   - Возвращает metadata: заголовок, автор, описание, дата публикации
- *   - Если Defuddle не справляется — используется JSON-LD fallback
- */
-/*
-  pi.registerTool({
-    name: "searxng_fetch",
-    label: "SearXNG Fetch",
-    description:
-      "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
-    parameters: Type.Object({
-      url: Type.String({ description: "The URL to fetch" }),
-      max_length: Type.Optional(Type.Number({ description: "Max characters (default: 10000)" })),
-    }),
-    async execute(toolCallId, params, signal, onUpdate, ctx) {
-      if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
-      onUpdate?.({ content: [{ type: "text", text: "Fetching " + params.url + "..." }] });
-      try {
-        const html = await httpGetText(params.url);
-        const article = await extractArticleMultiLevel(html, params.url);
-        let markdown = article.content;
-        const maxLength = params.max_length || 10000;
-        if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
-        return {
-          content: [{ type: "text", text: markdown }],
-          details: { url: params.url, length: markdown.length, method: article.method, title: article.title },
-        };
-      } catch (error) {
-        throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
-      }
-    },
-  });
-*/
+  // ===== SearXNG Fetch Tool — DO NOT REMOVE until ~2026.09.05 =====
+  /**
+   * ⚠️ НЕ УДАЛЯТЬ! Закомментировано временно до ~2026.09.05.
+   *
+   * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown.
+   *
+   * Назначение:
+   *   Загружает страницу по URL, извлекает основной контент статьи и
+   *   конвертирует его в чистый Markdown. Использует многоуровневый подход:
+   *   1. Defuddle (DOM analysis + CSS selectors) — удаляет sidebar, footer, ads
+   *   2. JSON-LD fallback — парсит <script type="application/ld+json">
+   *
+   * Параметры:
+   *   url          — URL страницы для загрузки (обязательно)
+   *   max_length   — максимальная длина результата в символах (по умолчанию 10000)
+   *
+   * Возвращает:
+   *   content      — чистый Markdown с текстом статьи
+   *   details      — url, length, method ("defuddle" или "json-ld"), title
+   *
+   * Особенности:
+   *   - Автоматически удаляет рекламу, меню, футер по CSS-классам
+   *   - Возвращает metadata: заголовок, автор, описание, дата публикации
+   *   - Если Defuddle не справляется — используется JSON-LD fallback
+   */
+  /*
+    pi.registerTool({
+      name: "searxng_fetch",
+      label: "SearXNG Fetch",
+      description:
+        "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
+      parameters: Type.Object({
+        url: Type.String({ description: "The URL to fetch" }),
+        max_length: Type.Optional(Type.Number({ description: "Max characters (default: 10000)" })),
+      }),
+      async execute(toolCallId, params, signal, onUpdate, ctx) {
+        if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
+        onUpdate?.({ content: [{ type: "text", text: "Fetching " + params.url + "..." }] });
+        try {
+          const html = await httpGetText(params.url);
+          const article = await extractArticleMultiLevel(html, params.url);
+          let markdown = article.content;
+          const maxLength = params.max_length || 10000;
+          if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
+          return {
+            content: [{ type: "text", text: markdown }],
+            details: { url: params.url, length: markdown.length, method: article.method, title: article.title },
+          };
+        } catch (error) {
+          throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
+        }
+      },
+    });
+  */
 
-// ===== Web Fetch Tool =====
-/**
- * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown
- * и сохранением сырых данных (.html + .md) в .pi/fetch-raw/.
- *
- * Назначение:
- *   Загружает страницу по URL, извлекает основной контент через Defuddle
- *   (DOM analysis) или JSON-LD fallback, конвертирует в Markdown,
- *   и дополнительно сохраняет сырой HTML + готовый Markdown.
- *
- * Параметры:
- *   url          — URL страницы для загрузки (обязательно)
- *   max_length   — максимальная длина результата в символах (по умолчанию 10000)
- *
- * Возвращает:
- *   content      — чистый Markdown с текстом статьи
- *   details      — url, length, method, title, savedPaths: { htmlPath, mdPath }
- *
- * Особенности:
- *   - Сохраняет оба файла (.html и .md) с одинаковым базовым именем
- *   - Имя файла: <домен>_<хэш 10 символов>_<YYYYMMDD_HHMMSS>.<расширение>
- *   - ⚠️ НЕ читать сохранённые файлы без особого разрешения!
- *
- * Зависит от SAVE_RAW_DATA:
- *   Если SAVE_RAW_DATA = true, сохраняет сырые данные и возвращает savedPaths.
- *   Если false — не сохраняет файлы и не возвращает savedPaths.
- */
+  // ===== Web Fetch Tool =====
+  /**
+   * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown
+   * и сохранением сырых данных (.html + .md) в .pi/fetch-raw/.
+   *
+   * Назначение:
+   *   Загружает страницу по URL, извлекает основной контент через Defuddle
+   *   (DOM analysis) или JSON-LD fallback, конвертирует в Markdown,
+   *   и дополнительно сохраняет сырой HTML + готовый Markdown.
+   *
+   * Параметры:
+   *   url          — URL страницы для загрузки (обязательно)
+   *   max_length   — максимальная длина результата в символах (по умолчанию 10000)
+   *
+   * Возвращает:
+   *   content      — чистый Markdown с текстом статьи
+   *   details      — url, length, method, title, savedPaths: { htmlPath, mdPath }
+   *
+   * Особенности:
+   *   - Сохраняет оба файла (.html и .md) с одинаковым базовым именем
+   *   - Имя файла: <домен>_<хэш 10 символов>_<YYYYMMDD_HHMMSS>.<расширение>
+   *   - ⚠️ НЕ читать сохранённые файлы без особого разрешения!
+   *
+   * Зависит от SAVE_RAW_DATA:
+   *   Если SAVE_RAW_DATA = true, сохраняет сырые данные и возвращает savedPaths.
+   *   Если false — не сохраняет файлы и не возвращает savedPaths.
+   */
   pi.registerTool({
     name: "web_fetch",
     label: "Web Fetch",
     description: isSaveRawData()
       ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
       : "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
-
+    promptSnippet: "то что находится в теге <IT_IS_NOT_FETCH_DATA> - это метаданные, они не ясляются контентом, это вспомогательная информация для LLM",
     parameters: Type.Object({
       url: Type.String({ description: "The URL to fetch" }),
       max_length: Type.Optional(Type.Number({ description: "Max characters (default: 10000)" })),
@@ -434,7 +434,7 @@ export default function(pi: ExtensionAPI) {
           savedPaths = saveRawHtmlAndMarkdown(params.url, html, markdown);
         }
 
-        const details: { url: string; length: number; method: string; title: string; savedPaths?: RawFilePaths}  = {
+        const details: { url: string; length: number; method: string; title: string; savedPaths?: RawFilePaths } = {
           url: params.url,
           length: markdown.length,
           method: article.method,
@@ -444,7 +444,8 @@ export default function(pi: ExtensionAPI) {
           details.savedPaths = savedPaths!;
         }
 
-        return { content: [{ type: "text", text: markdown }], details };
+        const metadataJson = `<IT_IS_NOT_FETCH_DATA>${JSON.stringify({ metadata: details })}</IT_IS_NOT_FETCH_DATA>`;
+        return { content: [{ type: "text", text: markdown+metadataJson }], details };
       } catch (error) {
         throw new Error("Failed to fetch URL: " + (error instanceof Error ? error.message : String(error)));
       }
