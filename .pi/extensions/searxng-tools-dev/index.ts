@@ -68,6 +68,21 @@ function getSearexngUrl(): string {
   return process.env.SEARXNG_URL || readEnvFile().SEARXNG_URL || "<SEARXNG_URL>";
 }
 
+/**
+ * Tool name prefix. Default "_dev_" (set in .env) - применяется ко всем
+ * именам инструментов этого расширения. Пустое значение (или отсутствие
+ * в .env) - префикс не добавляется, имена совпадают с продом.
+ *
+ * Пример: SEARXNG_TOOL_PREFIX="_dev_" → "searxng_search" становится
+ *   "_dev_searxng_search". Это позволяет запускать dev-версию рядом с
+ *   действующей без конфликта по именам инструментов.
+ *
+ * Приоритет: 1. OS env (process.env) → 2. .env file → 3. Default "_dev_".
+ */
+function getToolPrefix(): string {
+  return process.env.SEARXNG_TOOL_PREFIX ?? readEnvFile().SEARXNG_TOOL_PREFIX ?? "_dev_";
+}
+
 // ===== Configuration =============
 
 /**
@@ -267,6 +282,10 @@ export default function (pi: ExtensionAPI) {
   /**
    * Инструмент для поиска через метапоисковик SearXNG.
    *
+   * Имя: ${getToolPrefix()}searxng_search (префикс берётся из .env
+   *   SEARXNG_TOOL_PREFIX; по умолчанию "_dev_", так что фактическое имя
+   *   обычно "_dev_searxng_search" — чтобы не конфликтовать с прод-расширением).
+   *
    * Назначение:
    *   Выполняет поисковый запрос к локальному экземпляру SearXNG и возвращает
    *   агрегированные результаты из 249+ поисковых сервисов (Google, Bing,
@@ -288,7 +307,7 @@ export default function (pi: ExtensionAPI) {
    *   как JSON файл с именем search_<запрос>_<хэш>_<дата>.json.
    */
   pi.registerTool({
-    name: "searxng_search",
+    name: `${getToolPrefix()}searxng_search`,
     label: "SearXNG Search",
     description: isSaveRawData()
       ? "Search the web using SearXNG metasearch engine, AND save results to .pi/fetch-raw/. Do NOT read saved files without special permission."
@@ -350,7 +369,7 @@ export default function (pi: ExtensionAPI) {
    */
   /*
     pi.registerTool({
-      name: "searxng_fetch",
+      name: `${getToolPrefix()}searxng_fetch`,
       label: "SearXNG Fetch",
       description:
         "Fetch and read web page content. Uses Defuddle (DOM analysis) + JSON-LD fallback to extract clean article Markdown.",
@@ -383,6 +402,10 @@ export default function (pi: ExtensionAPI) {
    * Инструмент для чтения веб-страниц с конвертацией HTML → Markdown
    * и сохранением сырых данных (.html + .md) в .pi/fetch-raw/.
    *
+   * Имя: ${getToolPrefix()}web_fetch (префикс берётся из .env
+   *   SEARXNG_TOOL_PREFIX; по умолчанию "_dev_", так что фактическое имя
+   *   обычно "_dev_web_fetch" — чтобы не конфликтовать с прод-расширением).
+   *
    * Назначение:
    *   Загружает страницу по URL, извлекает основной контент через Defuddle
    *   (DOM analysis) или JSON-LD fallback, конвертирует в Markdown,
@@ -406,7 +429,7 @@ export default function (pi: ExtensionAPI) {
    *   Если false — не сохраняет файлы и не возвращает savedPaths.
    */
   pi.registerTool({
-    name: "web_fetch",
+    name: `${getToolPrefix()}web_fetch`,
     label: "Web Fetch",
     description: isSaveRawData()
       ? "Fetch, convert to Markdown (Defuddle + JSON-LD), AND save raw HTML and Markdown to .pi/fetch-raw/. Do NOT read saved files without special permission."
