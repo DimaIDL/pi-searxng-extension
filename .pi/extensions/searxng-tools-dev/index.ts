@@ -299,19 +299,27 @@ export default function (pi: ExtensionAPI) {
    *
    * Возвращает:
    *   content      — отформатированный список результатов (нумерация, заголовок,
-   *                  URL, сниппет, score релевантности)
-   *   details      — resultsCount: количество найденных результатов, savedPaths: { jsonPath }
+   *                  URL, сниппет, score релевантности). В конце — строка
+   *                  "[Results saved to .pi/fetch-raw/<имя>.json]" с конкретным
+   *                  именем файла — для пользователя, чтобы он мог открыть его
+   *                  самостоятельно.
    *
    * Особенности:
    *   Если SAVE_RAW_DATA = true, результаты сохраняются в .pi/fetch-raw/
-   *   как JSON файл с именем search_<запрос>_<хэш>_<дата>.json.
+   *   как JSON файл с именем search_<запрос>_<хэш>_<дата>.json. Этот файл —
+   *   сырой ответ SearXNG API. Модель НЕ должна читать его без явного приказа
+   *   пользователя (см. promptSnippet).
    */
   pi.registerTool({
     name: `${getToolPrefix()}searxng_search`,
     label: "SearXNG Search",
     description: isSaveRawData()
-      ? "Search the web using SearXNG metasearch engine, AND save results to .pi/fetch-raw/. Do NOT read saved files without special permission."
+      ? "Search the web using SearXNG metasearch engine. Returns formatted top results; the raw SearXNG JSON response is saved to .pi/fetch-raw/ (the user can open it themselves). Do NOT read the saved file without explicit user permission."
       : "Search the web using SearXNG metasearch engine.",
+    promptSnippet: "Search results are saved as RAW JSON to .pi/fetch-raw/search_<query>_<hash>_<date>.json " +
+      "(the exact filename is also shown in the response text so the user can find it). " +
+      "The formatted list in content is already complete and canonical — do NOT read the saved file " +
+      "unless the user explicitly asks you to.",
     parameters: Type.Object({
       query: Type.String({ description: "The search query" }),
       language: Type.Optional(Type.String({ description: "Language code (e.g., en, ru). Default: all." })),
