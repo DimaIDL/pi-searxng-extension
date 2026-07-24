@@ -69,18 +69,20 @@ function getSearexngUrl(): string {
 }
 
 /**
- * Tool name prefix. Default "_dev_" (set in .env) - применяется ко всем
- * именам инструментов этого расширения. Пустое значение (или отсутствие
- * в .env) - префикс не добавляется, имена совпадают с продом.
+ * Tool name prefix. Берётся ТОЛЬКО из .env файла (SEARXNG_TOOL_PREFIX):
+ *   - пустое значение или строка отсутствует — префикс не добавляется
+ *   - любое непустое значение — используется как префикс
+ *
+ * process.env НЕ читается намеренно: параметр "префикс инструмента" — это
+ * настройка конкретного расширения, не окружения. Иначе при параллельной
+ * загрузке двух расширений (это + глобальный searxng-tools) переменная из
+ * shell/CWD-загрузчика просочилась бы в оба → конфликт имён.
  *
  * Пример: SEARXNG_TOOL_PREFIX="_dev_" → "searxng_search" становится
- *   "_dev_searxng_search". Это позволяет запускать dev-версию рядом с
- *   действующей без конфликта по именам инструментов.
- *
- * Приоритет: 1. OS env (process.env) → 2. .env file → 3. Default "_dev_".
+ *   "_dev_searxng_search".
  */
 function getToolPrefix(): string {
-  return process.env.SEARXNG_TOOL_PREFIX ?? readEnvFile().SEARXNG_TOOL_PREFIX ?? "_dev_";
+  return readEnvFile().SEARXNG_TOOL_PREFIX ?? "";
 }
 
 // ===== Configuration =============
