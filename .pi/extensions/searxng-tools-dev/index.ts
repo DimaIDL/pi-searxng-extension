@@ -296,6 +296,10 @@ export default function (pi: ExtensionAPI) {
    *   language     — код языка (например "ru", "en"), по умолчанию все языки
    *   safesearch   — 0 = выключен, 1 = умеренный, 2 = строгий
    *   time_range   — фильтр по времени: "day", "month", "year"
+   *   categories   — категория SearXNG (general/images/videos/news/map/music/it/
+   *                  science/files/social media). По умолчанию не передаётся —
+   *                  сервер берёт general. Указывать только при явной причине.
+   *   pageno       — номер страницы (по умолчанию 1)
    *
    * Возвращает:
    *   content      — отформатированный список результатов (нумерация, заголовок,
@@ -314,17 +318,25 @@ export default function (pi: ExtensionAPI) {
     name: `${getToolPrefix()}searxng_search`,
     label: "SearXNG Search",
     description: isSaveRawData()
-      ? "Search the web using SearXNG metasearch engine. Returns formatted top results; the raw SearXNG JSON response is saved to .pi/fetch-raw/ (the user can open it themselves). Do NOT read the saved file without explicit user permission."
-      : "Search the web using SearXNG metasearch engine.",
+      ? "Search the web using SearXNG metasearch engine. Returns formatted top results; the raw SearXNG JSON response is saved to .pi/fetch-raw/ (the user can open it themselves). Do NOT read the saved file without explicit user permission. Supports categories (general, images, videos, news, map, music, it, science, files, social media) and pageno."
+      : "Search the web using SearXNG metasearch engine. Supports categories (general, images, videos, news, map, music, it, science, files, social media) and pageno.",
     promptSnippet: "Search results are saved as RAW JSON to .pi/fetch-raw/search_<query>_<hash>_<date>.json " +
       "(the exact filename is also shown in the response text so the user can find it). " +
       "The formatted list in content is already complete and canonical — do NOT read the saved file " +
-      "unless the user explicitly asks you to.",
+      "unless the user explicitly asks you to. " +
+      "Categories are OFF by default (SearXNG uses general). Do NOT switch category without a clear reason — general wins unless the user clearly wants a specific type. " +
+      "All 10 categories are available in any language: general (default web), images (pictures, photos, картинки, фото), videos (clips, ролики, видео), news (latest, новости, что нового), map (locations, карта, где находится), music (songs, песни, музыка), it (code, repos, github, stackoverflow, код), science (papers, arxiv, исследования, научные статьи), files (PDF, DOCX, файлы), social media (reddit, соцсети). " +
+      "These are examples, not an exhaustive list — recognize the intent in any phrasing, not just the examples given.",
     parameters: Type.Object({
       query: Type.String({ description: "The search query" }),
       language: Type.Optional(Type.String({ description: "Language code (e.g., en, ru). Default: all." })),
       safesearch: Type.Optional(Type.Number({ description: "0=off, 1=moderate, 2=strict. Default: 0" })),
       time_range: Type.Optional(StringEnum(["day", "month", "year"] as const, { description: "Time range filter" })),
+      categories: Type.Optional(StringEnum(
+        ["general", "images", "videos", "news", "map", "music", "it", "science", "files", "social media"] as const,
+        { description: "Search category. Default: general (SearXNG default). Omit unless the user clearly wants a specific content type." }
+      )),
+      pageno: Type.Optional(Type.Number({ description: "Page number (default: 1). Useful for paginated results." })),
     }),
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
@@ -334,6 +346,8 @@ export default function (pi: ExtensionAPI) {
       if (params.language) url.searchParams.set("language", params.language);
       if (params.safesearch !== undefined) url.searchParams.set("safesearch", String(params.safesearch));
       if (params.time_range) url.searchParams.set("time_range", params.time_range);
+      if (params.categories) url.searchParams.set("categories", params.categories);
+      if (params.pageno) url.searchParams.set("pageno", String(params.pageno));
       onUpdate?.({ content: [{ type: "text", text: "Searching SearXNG..." }] });
       try {
         const data = await httpGet(url.toString());
