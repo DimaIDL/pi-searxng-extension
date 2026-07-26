@@ -471,15 +471,19 @@ export default function (pi: ExtensionAPI) {
       try {
         const html = await httpGetText(params.url);
         const article = await extractArticleMultiLevel(html, params.url);
+
+        // Полный markdown — для лога (.pi/fetch-raw/), чтобы можно было
+        // сверить/перепосчитать постфактум. Сырой HTML сохраняется рядом
+        // и тоже всегда полный.
+        let savedPaths: RawFilePaths | undefined;
+        if (isSaveRawData()) {
+          savedPaths = saveRawHtmlAndMarkdown(params.url, html, article.content);
+        }
+
+        // Обрезанный markdown — только для выдачи модели.
         let markdown = article.content;
         const maxLength = params.max_length || 10000;
         if (markdown.length > maxLength) markdown = markdown.substring(0, maxLength) + "\n\n[Content truncated]";
-
-        // Save raw HTML and Markdown only if isSaveRawData() is true
-        let savedPaths: RawFilePaths | undefined;
-        if (isSaveRawData()) {
-          savedPaths = saveRawHtmlAndMarkdown(params.url, html, markdown);
-        }
 
         const details: { url: string; length: number; method: string; title: string; savedPaths?: RawFilePaths } = {
           url: params.url,
